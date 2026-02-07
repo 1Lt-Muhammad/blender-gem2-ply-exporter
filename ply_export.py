@@ -1,7 +1,6 @@
 import bpy, struct, heapq
 from bpy.app.translations import pgettext_tip as tip_
 from os import path
-from pathlib import Path
 
 pack_B = struct.Struct('B').pack
 pack_BBBB = struct.Struct('BBBB').pack
@@ -21,6 +20,7 @@ D3DFVF_LASTBETA_UBYTE4 = 0x1000
 
 MESH_FLAG_LIGHT     = 0b100
 MESH_FLAG_SKINNED   = 0b10000
+MESH_FLAG_BUMP      = 0b100000000
 MESH_FLAG_MATERIAL  = 0b10000000000
 MESH_FLAG_SUBSKIN   = 0b100000000000
 
@@ -99,6 +99,7 @@ def export(dir, operator, apply_unit_scale, use_mirror):
 
                 loops_count = len(mesh.loops)
                 if loops_count > 0xffffffff: raise Exception(f"Mesh '{mesh.name}'s loops/UVs count ({loops_count}) exceeds the limit {0xffffffff}")
+                if not mesh.uv_layers.active: raise Exception(f"Mesh '{mesh.name} has no UV layers")
                 if not mesh.materials: raise Exception(f"Mesh '{mesh.name}' has no materials")
                 
                 obj = mesh_to_obj.get(mesh)
@@ -134,12 +135,12 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                         tri_count = len(tris_by_mat_list[i])
                         f.write(pack_I(tri_count))
                         tri_start += tri_count
-                        f.write(pack_I(MESH_FLAG_LIGHT | MESH_FLAG_MATERIAL | (MESH_FLAG_SKINNED | MESH_FLAG_SUBSKIN if weights_count else 0)))
+                        f.write(pack_I(MESH_FLAG_LIGHT | MESH_FLAG_MATERIAL | MESH_FLAG_BUMP | (MESH_FLAG_SKINNED | MESH_FLAG_SUBSKIN if weights_count else 0)))
                         try:
                             material_name = mesh.materials[i].name
                         except:
                             material_name = ''
-                        material_name = material_name + ('.mtl' if not material_name.endswith('.mtl') else '')
+                        material_name = add_ext(material_name, '.mtl')
                         f.write(pack_B(len(material_name)))
                         f.write((material_name).encode())
                         if has_skin:
@@ -148,13 +149,10 @@ def export(dir, operator, apply_unit_scale, use_mirror):
 
                     f.write(b'VERT')
                     f.write(pack_I(loops_count))
-                    f.write(pack_H(32+8*has_skin)) # 3*4 for position + 3*4 for normal + 2*4 for uv
+                    f.write(pack_H(48+8*has_skin)) # 3*4 for position + 3*4 for normal + 2*4 for uv + 16 bump data
                     f.write(b'\x07\x00') # don't know what is this
                     loops = mesh.loops
-                    try:
-                        uvs = [uv.uv for uv in mesh.uv_layers.active.data]
-                    except:
-                        raise Exception(f"Mesh '{mesh.name} has no UV layers")
+                    uvs = [uv.uv for uv in mesh.uv_layers.active.data]
                     if has_skin:
                         vertex_weights = [
                             [(g.weight, g.group+1) for g in heapq.nlargest(2, vertex.groups, key=lambda g: g.weight)]
@@ -175,6 +173,8 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                         f.write(pack_fff(*loop.normal))
                         uv = uvs[loop.index]
                         f.write(pack_ff(uv[0], 1-uv[1]))
+                        f.write(pack_fff(*loop.tangent))
+                        f.write(pack_f(loop.bitangent_sign))
 
                     f.write(b'INDX')
                     f.write(pack_I(edges_count))
