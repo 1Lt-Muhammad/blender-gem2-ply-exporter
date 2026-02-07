@@ -20,6 +20,7 @@ import bpy
 from bpy.app.translations import pgettext_tip as tip_
 from bpy.props import (
     StringProperty,
+    BoolProperty,
     CollectionProperty,
 )
 from bpy_extras.io_utils import (
@@ -41,13 +42,26 @@ class ExportGEM2PLY(bpy.types.Operator, ExportHelper):
 
     filename_ext = ""
 
+    apply_unit_scale: BoolProperty(
+        name="Apply Unit Scale",
+        description="Take into account current Blender units settings (1m in blender = 1m in game, if unset, raw Blender Units values are used as-is)",
+        default=True,
+    )
+    use_mirror: BoolProperty(
+        name="Mirror Meshes",
+        description="Mirror meshes, used with negatively scaled bones",
+        default=False,
+    )
+
+
     def execute(self, context):
-        keywords = self.as_keywords(ignore=("filter_glob", "directory", "ui_tab"))
+        keywords = self.as_keywords(ignore=("filter_glob", "directory", "ui_tab", "filepath", "files", "check_existing"))
 
         from . import ply_export
 
         if self.directory:
-            return ply_export.export(self.directory, self)
+            print(keywords)
+            return ply_export.export(self.directory, self, **keywords)
 
 
 class IO_FH_gem2ply(bpy.types.FileHandler):
