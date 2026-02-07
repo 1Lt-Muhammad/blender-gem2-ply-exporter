@@ -1,7 +1,7 @@
 bl_info = {
     "name": "GEM2 Engine PLY",
     "author": "1Lt. Muhammad",
-    "version": (0, 4, 0),
+    "version": (0, 5, 0),
     "blender": (4, 5, 4),
     "location": "File > Import-Export",
     "description": "GEM2 Engine O PLY Files",
