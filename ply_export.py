@@ -151,7 +151,10 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                     f.write(pack_H(32+8*has_skin)) # 3*4 for position + 3*4 for normal + 2*4 for uv
                     f.write(b'\x07\x00') # don't know what is this
                     loops = mesh.loops
-                    uvs = [uv.uv for uv in mesh.uv_layers.active.data]
+                    try:
+                        uvs = [uv.uv for uv in mesh.uv_layers.active.data]
+                    except:
+                        raise Exception(f"Mesh '{mesh.name} has no UV layers")
                     if has_skin:
                         vertex_weights = [
                             [(g.weight, g.group+1) for g in heapq.nlargest(2, vertex.groups, key=lambda g: g.weight)]
@@ -167,12 +170,10 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                                 inv = 1 / (weights_list[0][0] + weights_list[1][0])
                             except:
                                 inv = 1
-                                print(weights_list)
                             f.write(pack_f(weights_list[0][0]*inv))
                             f.write(pack_BBBB(*(weight[1] for weight in weights_list)))
                         f.write(pack_fff(*loop.normal))
                         uv = uvs[loop.index]
-                        #f.write(pack_ff(mesh.uv_layers[0].uv[loop.index].vector[0], 1-mesh.uv_layers[0].uv[loop.index].vector[1]))
                         f.write(pack_ff(uv[0], 1-uv[1]))
 
                     f.write(b'INDX')
