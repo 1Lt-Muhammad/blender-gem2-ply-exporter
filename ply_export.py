@@ -25,7 +25,7 @@ MESH_FLAG_MATERIAL  = 0b10000000000
 MESH_FLAG_SUBSKIN   = 0b100000000000
 
 def add_ext(name, ext):
-    return name + (ext if not bpy.context.scene.name.endswith(ext) else '')
+    return name + (ext if not name.endswith(ext) else '')
 
 def export(dir, operator, apply_unit_scale, use_mirror):
     unit_scale = 1
