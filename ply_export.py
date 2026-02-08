@@ -61,15 +61,13 @@ def export(dir, operator, apply_unit_scale, use_mirror):
     
     mesh_to_obj = {obj.data: obj for obj in objects}
 
-    for mesh in bpy.data.meshes:
+    for mesh in mesh_to_obj:
         try:
-            if not mesh.users:
-                continue
             mesh.calc_loop_triangles()
-
             loop_tris = mesh.loop_triangles
             edges_count = len(loop_tris)*3
             if edges_count > 0xffffffff: raise Exception(f"Mesh '{mesh.name}'s edges count ({edges_count}) exceeds the limit {0xffffffff}")
+
             vertices = mesh.vertices
             coords = [vertex.co * unit_scale for vertex in vertices]
 
@@ -96,7 +94,6 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                         f.write(pack_B(tri.material_index+1))
 
             else:
-
                 loops_count = len(mesh.loops)
                 if loops_count > 0xffffffff: raise Exception(f"Mesh '{mesh.name}'s loops/UVs count ({loops_count}) exceeds the limit {0xffffffff}")
                 if not mesh.uv_layers.active: raise Exception(f"Mesh '{mesh.name} has no UV layers")
@@ -151,7 +148,7 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                     f.write(pack_I(loops_count))
                     f.write(pack_H(48+8*has_skin)) # 3*4 for position + 3*4 for normal + 2*4 for uv + 16 bump data
                     f.write(b'\x07\x00') # don't know what is this
-                    loops = mesh.loops
+
                     uvs = [uv.uv for uv in mesh.uv_layers.active.data]
                     if has_skin:
                         vertex_weights = [
@@ -159,7 +156,9 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                             for vertex in vertices
                         ]
 
-                    for loop in loops:
+                    mesh.calc_tangents()
+
+                    for loop in mesh.loops:
                         f.write(pack_fff(*(coords[loop.vertex_index])))
                         if has_skin:
                             weights_list = vertex_weights[loop.vertex_index]
