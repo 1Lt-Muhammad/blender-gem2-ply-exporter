@@ -59,7 +59,7 @@ def export(dir, operator, apply_unit_scale, use_mirror):
                 get_children(obj)
         f.write('}')
     
-    mesh_to_obj = {obj.data: obj for obj in objects}
+    mesh_to_obj = {obj.data: obj for obj in objects if obj.data and obj.data.id_type == 'MESH'}
 
     for mesh in mesh_to_obj:
         try:
